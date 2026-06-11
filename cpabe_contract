@@ -1,0 +1,47 @@
+pragma solidity ^0.8.20;
+
+contract CPABEAccessControl{
+ address public attributeAuthority;
+ uint256 private ciphertextCounter; bool private locked;
+
+ struct User{bool registered; bytes32 attributeCommitment; bool revoked;}
+ struct Ciphertext{address owner; string ipfsCID; bytes32 policyHash; uint256 createdAt; bool exists;}
+
+ mapping(address=>User) public users;
+ mapping(uint256=>Ciphertext) public ciphertexts;
+
+ event UserRegistered(address indexed u);
+ event UserRevoked(address indexed u);
+ event CiphertextShared(uint256 indexed id,address indexed o);
+ event AccessGranted(uint256 indexed id,address indexed u);
+
+ constructor(){attributeAuthority=msg.sender;}
+
+ modifier onlyAuthority(){require(msg.sender==attributeAuthority,"Not authority"); _;}
+ modifier nonReentrant(){require(!locked,"Reentrancy"); locked=true; _; locked=false;}
+
+ function registerUser(address u,bytes32 c) external onlyAuthority{
+  users[u]=User(true,c,false); emit UserRegistered(u);
+ }
+
+ function shareCiphertext(string memory cid,bytes32 ph) external{
+  require(users[msg.sender].registered && !users[msg.sender].revoked,"Invalid user");
+  ciphertextCounter++;
+  ciphertexts[ciphertextCounter]=Ciphertext(msg.sender,cid,ph,block.timestamp,true);
+  emit CiphertextShared(ciphertextCounter,msg.sender);
+ }
+
+ function requestAccess(uint256 id) external nonReentrant returns(string memory){
+  require(users[msg.sender].registered && !users[msg.sender].revoked,"Invalid user");
+  require(ciphertexts[id].exists,"Invalid id");
+  emit AccessGranted(id,msg.sender);
+  return ciphertexts[id].ipfsCID;
+ }
+
+ function revokeUser(address u) external onlyAuthority{
+  require(users[u].registered,"Not registered");
+  users[u].revoked=true; emit UserRevoked(u);
+ }
+
+ function transferAuthority(address n) external onlyAuthority{attributeAuthority=n;}
+}
