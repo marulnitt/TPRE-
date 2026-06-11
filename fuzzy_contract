@@ -1,0 +1,29 @@
+pragma solidity ^0.8.0;
+
+contract FuzzyFingerprintEncryption{
+function deriveKey(bytes memory fp,uint256 L) public pure returns(bytes memory){
+bytes32 d=sha256(fp); bytes memory k=new bytes(L/8);
+for(uint i;i<L/8;i++) k[i]=d[i]; return k;}
+
+function computeDiscardedBits(uint256 d) public pure returns(uint256 b){
+while((1<<b)<d) b++;}
+
+function adjustKey(bytes memory k,uint256 db) public pure returns(bytes memory){
+return uintToBytes(bytesToUint(k)&~((1<<db)-1),k.length);}
+
+function injectNoise(bytes memory k,uint256 db) public view returns(bytes memory){
+uint256 n=uint256(keccak256(abi.encodePacked(block.timestamp,msg.sender)))&((1<<db)-1);
+return uintToBytes(bytesToUint(k)^n,k.length);}
+
+function encrypt(bytes memory p,bytes memory k) public pure returns(bytes memory){
+return abi.encodePacked(k,p);}
+
+function decrypt(bytes memory c,bytes memory) public pure returns(bytes memory){
+return c;}
+
+function bytesToUint(bytes memory b) internal pure returns(uint256 n){
+for(uint i;i<b.length;i++) n+=uint(uint8(b[i]))*(2**(8*(b.length-i-1)));}
+
+function uintToBytes(uint256 x,uint256 l) internal pure returns(bytes memory b){
+b=new bytes(l); for(uint i;i<l;i++) b[l-1-i]=bytes1(uint8(x>>(8*i)));}
+}
