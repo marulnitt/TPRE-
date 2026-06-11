@@ -1,0 +1,30 @@
+pragma solidity ^0.8.0;
+
+contract RetinaIPFSStorage{
+address public owner;
+mapping(bytes32=>string) private retinaToCID;
+mapping(address=>string) private latestCIDByUser;
+
+event CIDStored(address indexed user,bytes32 retinaHash,string cid);
+
+constructor(){owner=msg.sender;}
+
+modifier onlyOwner(){require(msg.sender==owner,"Not authorized");_;}
+
+function storeRetinaCID(bytes32 h,string memory cid) public onlyOwner{
+require(retinaToCID[h].length==0,"Exists");
+require(bytes(cid).length!=0,"Empty");
+retinaToCID[h]=cid; latestCIDByUser[msg.sender]=cid;
+emit CIDStored(msg.sender,h,cid);
+}
+
+function getCIDByRetinaHash(bytes32 h) public view returns(string memory){
+string memory cid=retinaToCID[h];
+require(bytes(cid).length!=0,"Not found");
+return cid;
+}
+
+function getMyLatestCID() public view returns(string memory){
+return latestCIDByUser[msg.sender];
+}
+}
